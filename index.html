@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0b0b18">
+<title>Fact or Fake — Multiplayer Party Game</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0b18;--panel:#17172d;--line:#393957;--text:#f7f7ff;--muted:#a5a5c4;--purple:#8b5cf6;--cyan:#22d3ee;--green:#34d399;--red:#fb5366;--gold:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 15% 0%,#25204b,transparent 42%),radial-gradient(ellipse at 90% 20%,#123547,transparent 35%),var(--bg);color:var(--text);font:16px/1.45 system-ui,sans-serif}
+.wrap{max-width:950px;margin:auto;padding:22px 16px 55px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:25px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}.logo{background:linear-gradient(135deg,var(--purple),var(--cyan));width:45px;height:45px;border-radius:14px;display:grid;place-items:center;font-size:24px}
+h1{font-size:20px;margin:0}.brand small,.muted{color:var(--muted)}
+.pill{font-size:12px;border:1px solid var(--line);padding:7px 11px;border-radius:99px;color:#d0d0eb}
+.screen{display:none}.screen.active{display:block}
+.hero{text-align:center;padding:24px 0}.eyebrow{color:var(--cyan);font-size:12px;letter-spacing:2px;font-weight:900}
+.hero h2{font-size:clamp(38px,8vw,65px);line-height:1.02;letter-spacing:-2px;margin:12px 0}
+.gradient{background:linear-gradient(90deg,#c4b5fd,#67e8f9,#f9a8d4);color:transparent;background-clip:text}
+.hero p{max-width:570px;margin:auto;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;max-width:740px;margin:24px auto}
+.card{background:linear-gradient(155deg,#1b1b35,#121225);border:1px solid var(--line);border-radius:20px;padding:21px;margin:15px 0}
+.card h3{margin:0 0 7px}.card p{color:var(--muted);font-size:14px}
+.field{display:flex;flex-direction:column;gap:7px;margin:14px 0}
+label{font-size:12px;text-transform:uppercase;letter-spacing:.7px;color:#c8c8e4;font-weight:800}
+input{width:100%;background:#0e0e20;border:1px solid #41415d;border-radius:11px;color:white;padding:13px;font:inherit}
+button{font:inherit;cursor:pointer}
+.btn{border:0;border-radius:11px;padding:12px 16px;background:linear-gradient(100deg,var(--purple),#6d5dfc);color:white;font-weight:850}
+.btn:disabled{opacity:.45;cursor:not-allowed}.btn.secondary{background:#292943;border:1px solid #414164}.btn.cyan{background:linear-gradient(100deg,#0891b2,var(--cyan));color:#06121a}.full{width:100%}
+.notice{font-size:12px;color:var(--muted);margin-top:12px}
+.lobby-head,.gamebar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.room-code{font-size:30px;letter-spacing:7px;font-weight:900;color:var(--cyan);background:#0b1823;border:1px dashed #3d7a8b;border-radius:12px;padding:9px 14px}
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin:18px 0}
+.player{display:flex;align-items:center;gap:10px;background:#20203b;border:1px solid var(--line);border-radius:13px;padding:12px}
+.avatar{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;border-radius:10px;background:linear-gradient(135deg,var(--purple),var(--cyan));font-weight:900}
+.name{font-weight:800;overflow-wrap:anywhere}.player small{color:var(--muted)}
+.roundtag{font-size:12px;font-weight:900;letter-spacing:1px;color:var(--cyan)}
+.timer-num{font-size:25px;font-weight:900;font-variant-numeric:tabular-nums}
+.timer-track{height:10px;background:#292943;border:1px solid #41415d;border-radius:99px;overflow:hidden;margin:12px 0 22px}
+.timer-fill{height:100%;width:100%;background:linear-gradient(90deg,var(--cyan),var(--purple));transition:width .1s linear}
+.timer-track.urgent .timer-fill{background:var(--red);animation:flash .45s infinite alternate}
+@keyframes flash{to{opacity:.45}}
+.question-title{font-size:clamp(24px,4vw,37px);letter-spacing:-.6px;margin:5px 0}
+.question-sub{color:var(--muted);margin-bottom:20px}
+.answers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.answer{min-height:90px;display:flex;align-items:flex-start;gap:12px;text-align:left;padding:15px;background:#1b1b34;border:1px solid #3a3a5a;border-radius:15px;color:white}
+.answer:hover:not(:disabled){border-color:var(--cyan)}.answer:disabled{cursor:default}
+.letter{flex:0 0 31px;height:31px;display:grid;place-items:center;border-radius:9px;background:#30304e;font-weight:900}
+.answer.selected{border-color:var(--cyan);background:#12313d}.answer.correct{border-color:var(--green);background:#10392f}.answer.wrong{border-color:var(--red);background:#401e2a}
+.feedback{margin-top:15px;padding:13px;border-radius:12px;background:#20203a;border:1px solid var(--line)}
+.feedback.good{border-color:#258a6c;background:#10372f}.feedback.bad{border-color:#9b4052;background:#3a1c28}
+.hidden{display:none!important}
+.double-card{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #a77a28;background:linear-gradient(130deg,#382a17,#211c2d);border-radius:14px;padding:14px;margin-bottom:17px}
+.double-card p{font-size:13px;color:#e4d4ad;margin:4px 0}
+.toggle{width:58px;height:32px;flex-shrink:0;border-radius:99px;background:#48485c;border:1px solid #62627a;position:relative}
+.toggle:after{content:"";position:absolute;width:24px;height:24px;top:3px;left:3px;border-radius:50%;background:white;transition:.18s}
+.toggle.on{background:#b98522}.toggle.on:after{left:29px}.toggle:disabled{opacity:.4}
+.stats{display:flex;gap:10px;flex-wrap:wrap}.stat{background:#1a1a32;border:1px solid #343451;border-radius:11px;padding:10px 13px}
+.stat small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase}.stat strong{font-size:20px}
+.leaderboard{display:flex;flex-direction:column;gap:9px}
+.leader{display:flex;align-items:center;gap:12px;background:#1a1a32;border:1px solid #343451;padding:12px 14px;border-radius:12px}
+.rank{width:32px;height:32px;flex-shrink:0;display:grid;place-items:center;background:#30304d;border-radius:9px;font-weight:900}
+.leader:first-child .rank{background:#78571b;color:#ffe9a3}.score{margin-left:auto;color:var(--cyan);font-weight:900;white-space:nowrap}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;height:220px;max-width:600px;margin:30px auto 20px}
+.podium-col{flex:1;max-width:160px;text-align:center;min-width:0}
+.podium-person{font-weight:850;overflow-wrap:anywhere;margin-bottom:7px}.podium-score{font-size:12px;color:var(--muted);margin-bottom:7px}
+.podium-block{border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;font-size:25px;font-weight:900}
+.p1{height:135px;background:linear-gradient(#fcd34d,#a16207);color:#241705}
+.p2{height:95px;background:linear-gradient(#d1d5db,#737b8a);color:#171923}
+.p3{height:70px;background:linear-gradient(#d97745,#78350f);color:#fff2e8}
+.podium-col:nth-child(1){order:2}.podium-col:nth-child(2){order:1}.podium-col:nth-child(3){order:3}
+#confetti{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:20}
+#confetti i{position:absolute;top:-20px;width:8px;height:13px;animation:fall 3s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#242440;border:1px solid #505078;padding:12px 16px;border-radius:12px;z-index:50;max-width:90%;display:none;box-shadow:0 10px 40px #0008}
+.footnote{text-align:center;color:#8585a6;font-size:12px;margin-top:30px}
+@media(max-width:620px){.grid,.answers{grid-template-columns:1fr}.card{padding:17px}.hero{padding-top:10px}.answer{min-height:70px}.room-code{font-size:25px;letter-spacing:5px}.podium{height:190px}.p1{height:115px}.p2{height:80px}.p3{height:60px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand"><div class="logo">⚡</div><div><h1>FACT <span class="gradient">OR FAKE</span></h1><small>Trust your brain. Beat your friends.</small></div></div>
+  <span class="pill" id="connectionStatus">● PEER-TO-PEER</span>
+</header>
+
+<section id="home" class="screen active">
+  <div class="hero"><div class="eyebrow">THE FRIEND GROUP FACT CHECK</div><h2>FACT <span class="gradient">OR FAKE?</span></h2><p>One weird fact. Three rounds. Fifteen seconds. Can you spot the truth before your friends?</p></div>
+  <div class="grid">
+    <div class="card">
+      <h3>🚀 Create a room</h3><p>Host a game and invite 1–7 friends with your room code.</p>
+      <div class="field"><label for="hostName">Your name</label><input id="hostName" maxlength="16" placeholder="e.g. Alex"></div>
+      <button id="createBtn" class="btn full">Create room →</button>
+    </div>
+    <div class="card">
+      <h3>🎮 Join a room</h3><p>Enter the four-letter code shared by your host.</p>
+      <div class="field"><label for="joinName">Your name</label><input id="joinName" maxlength="16" placeholder="e.g. Sam"></div>
+      <div class="field"><label for="joinCode">Room code</label><input id="joinCode" maxlength="4" placeholder="ABCD" autocomplete="off"></div>
+      <button id="joinBtn" class="btn cyan full">Join game →</button>
+    </div>
+  </div>
+  <div class="card"><h3>How to play</h3><p>Pick the real fact before time runs out. Faster correct answers earn more points. In Round 3, Double Down doubles a correct score but costs 500 points for a wrong answer.</p>
+    <div class="stats"><div class="stat"><small>Fastest</small><strong>1,000 pts</strong></div><div class="stat"><small>Rounds</small><strong>3</strong></div><div class="stat"><small>Players</small><strong>2–8</strong></div></div>
+  </div>
+  <p class="notice">Uses PeerJS's public signaling service and public STUN servers. An internet connection is required. Public services may be unavailable or rate-limited.</p>
+</section>
+
+<section id="lobby" class="screen">
+  <div class="card">
+    <div class="lobby-head"><div><div class="eyebrow">ROOM CODE — SHARE WITH FRIENDS</div><div id="roomCode" class="room-code">----</div></div><div><strong id="playerCount">1</strong>/8 players<br><small id="hostLabel" class="muted"></small></div></div>
+    <p id="lobbyHint" class="muted">Waiting for players…</p><div id="lobbyPlayers" class="players"></div>
+    <button id="startBtn" class="btn full" disabled>Need 2 players to start</button>
+    <p class="notice">Keep the host tab open throughout the game. If the host disconnects, the game ends.</p>
+    <button id="leaveBtn" class="btn secondary full" style="margin-top:10px">Leave room</button>
+  </div>
+</section>
+
+<section id="game" class="screen">
+  <div class="gamebar"><div><div id="roundLabel" class="roundtag">ROUND 1 / 3</div><div id="categoryLabel" class="muted"></div></div><div style="text-align:right"><div id="timerNum" class="timer-num">15.0s</div><div class="muted" style="font-size:12px"><span id="answeredCount">0/2</span> answered</div></div></div>
+  <div id="timerTrack" class="timer-track"><div id="timerFill" class="timer-fill"></div></div>
+  <div class="card" id="questionCard">
+    <h2 class="question-title">Which statement is true?</h2><p class="question-sub" id="playerProgress">Choose quickly for more points.</p>
+    <div id="doubleDownBox" class="double-card hidden"><div><strong>⚡ DOUBLE DOWN · FINAL ROUND</strong><p id="doubleCopy">Correct = double points. Wrong = −500.</p></div><button id="doubleToggle" class="toggle" role="switch" aria-checked="false" aria-label="Toggle Double Down"></button></div>
+    <div id="answers" class="answers"></div><div id="answerFeedback" class="feedback hidden"></div>
+  </div>
+  <div id="revealCard" class="card hidden"><div class="eyebrow">THE REAL FACT</div><h2 id="revealTitle"></h2><p id="revealExplanation" class="muted"></p><div id="roundScoreSummary" class="feedback"></div><p id="nextRoundHint" class="notice">Next round begins shortly…</p></div>
+  <div class="card"><strong>Your score:</strong> <span id="myScore" style="color:var(--cyan);font-size:22px;font-weight:900">0</span> pts</div>
+</section>
+
+<section id="results" class="screen">
+  <div class="hero"><div class="eyebrow">GAME COMPLETE</div><h2>THE <span class="gradient">PODIUM</span></h2><p id="resultRoom" class="muted"></p></div>
+  <div id="podium" class="podium"></div>
+  <div class="card"><h3>Final leaderboard</h3><div id="finalLeaderboard" class="leaderboard"></div></div>
+  <button id="playAgainBtn" class="btn full">Play again →</button>
+  <button id="homeBtn" class="btn secondary full" style="margin-top:10px">Leave room</button>
+</section>
+</div>
+<div id="confetti"></div><div id="toast" class="toast"></div>
+
+<!-- PeerJS is loaded from a CDN; the HTML itself needs no build process or API key. -->
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+"use strict";
+
+const QUESTIONS=[
+ {category:"WEIRD NATURE",options:["Octopuses have three hearts.","Sharks are mammals, not fish.","A snail sleeps for three years every night.","Penguins cannot swim underwater."],correct:0,explanation:"Octopuses have three hearts: two pump blood to the gills, and one pumps it to the rest of the body."},
+ {category:"HISTORY & SCIENCE",options:["Oxford University is older than the Aztec Empire.","The first iPhone predates Cleopatra.","Napoleon was exactly four feet tall.","The first email was sent before the telephone was invented."],correct:0,explanation:"Teaching at Oxford dates back to around 1096. The Aztec Empire formed centuries later."},
+ {category:"WHAT ON EARTH?",options:["A group of flamingos is called a flamboyance.","The Great Wall is easily visible from the Moon.","Goldfish have a three-second memory.","Humans share 90% of their DNA with bananas."],correct:0,explanation:"Flamboyance is a commonly used collective noun for flamingos. The other claims are myths or misleading."},
+ {category:"ODD ANIMAL FACTS",options:["Wombats produce cube-shaped droppings.","Polar bears have white skin.","All frogs drink water through their mouths.","Butterflies taste only with their tongues."],correct:0,explanation:"Wombats produce cube-shaped droppings; the shape is formed in their intestines."},
+ {category:"BIZARRE HISTORY",options:["The shortest recorded war lasted less than an hour.","Ancient Romans used plastic coins.","The Eiffel Tower was first built in London.","The first Olympics included video games."],correct:0,explanation:"The Anglo-Zanzibar War of 1896 is generally considered the shortest war in recorded history."},
+ {category:"STRANGE SCIENCE",options:["A day on Venus is longer than its year.","Lightning never strikes the same place twice.","Water boils at exactly 100°C everywhere.","Humans have only five senses."],correct:0,explanation:"Venus takes longer to rotate once on its axis than to orbit the Sun."},
+ {category:"FOOD FACTS",options:["Peanuts are legumes, not true nuts.","White chocolate contains cocoa solids.","Carrots have always been orange.","Strawberries are botanical berries."],correct:0,explanation:"Peanuts grow in pods and belong to the legume family, alongside beans and lentils."},
+ {category:"ANIMAL ODDITIES",options:["Cows can form preferred social bonds.","Owls rotate their heads a full 360 degrees.","Bats are blind.","Shrimp have no brains."],correct:0,explanation:"Research suggests cows form preferred social bonds and may show stress when separated from familiar companions."}
+];
+
+const $=id=>document.getElementById(id);
+const now=()=>Date.now();
+const randomId=()=>Math.random().toString(36).slice(2,12);
+const randomCode=()=>Array.from({length:4},()=>"ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(Math.random()*24)]).join("");
+
+let peer=null,room=null,me=null,isHost=false;
+let connections=new Map(),clientConn=null;
+let hostTimer=null,uiTimer=null,toastTimer=null;
+let answerLocal=null,doubleLocal=false,lastVersion=0,connecting=false;
+
+function toast(message){
+ $("toast").textContent=message;$("toast").style.display="block";
+ clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").style.display="none",4000);
+}
+function showScreen(id){document.querySelectorAll(".screen").forEach(el=>el.classList.toggle("active",el.id===id));}
+function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function setStatus(text){$("connectionStatus").textContent="● "+text;}
+function hostPeerId(code){return "factfake-"+code;}
+function makePeer(id){
+ if(!window.Peer)throw new Error("PeerJS did not load. Check your internet connection and reload.");
+ return new Peer(id,{
+   debug:1,
+   config:{iceServers:[
+     {urls:"stun:stun.l.google.com:19302"},
+     {urls:"stun:stun1.l.google.com:19302"}
+   ]}
+ });
+}
+function stopTimers(){
+ if(hostTimer)clearInterval(hostTimer);
+ if(uiTimer)clearInterval(uiTimer);
+ hostTimer=uiTimer=null;
+}
+function destroyPeer(){
+ stopTimers();
+ for(const conn of connections.values()){try{conn.close();}catch(e){}}
+ connections.clear();
+ if(clientConn){try{clientConn.close();}catch(e){}clientConn=null;}
+ if(peer){try{peer.destroy();}catch(e){}peer=null;}
+ connecting=false;
+}
+function leaveRoom(){
+ destroyPeer();room=null;me=null;isHost=false;answerLocal=null;doubleLocal=false;
+ $("confetti").replaceChildren();showScreen("home");setStatus("PEER-TO-PEER");
+}
+function broadcastState(){
+ if(!room)return;
+ room.version=(room.version||0)+1;
+ render();
+ const message={type:"state",room};
+ for(const conn of connections.values()){
+   if(conn.open){try{conn.send(message);}catch(e){}}
+ }
+}
+function sendToHost(message){
+ if(clientConn&&clientConn.open){
+   try{clientConn.send(message);return true;}catch(e){}
+ }
+ toast("Not connected to the host. Check your connection.");
+ return false;
+}
+function shuffleQuestion(){
+ let available=QUESTIONS.map((q,i)=>({...q,originalIndex:i})).filter(q=>!room.usedQuestions.includes(q.originalIndex));
+ if(!available.length){room.usedQuestions=[];available=QUESTIONS.map((q,i)=>({...q,originalIndex:i}));}
+ const q=available[Math.floor(Math.random()*available.length)];
+ room.usedQuestions.push(q.originalIndex);
+ const correctText=q.options[q.correct];
+ q.options=[...q.options].sort(()=>Math.random()-.5);
+ q.correct=q.options.indexOf(correctText);
+ return q;
+}
+
+async function createRoom(){
+ if(connecting)return;
+ connecting=true;
+ $("createBtn").disabled=true;
+ const name=$("hostName").value.trim().slice(0,16)||"Host";
+ let success=false;
+ for(let attempt=0;attempt<8&&!success;attempt++){
+   const code=randomCode();
+   try{
+     const candidate=makePeer(hostPeerId(code));
+     peer=candidate;
+     candidate.on("open",id=>{
+       if(success)return;
+       success=true;connecting=false;isHost=true;me=id;
+       room={
+         code,hostId:id,phase:"lobby",round:0,roundStartedAt:0,deadline:0,
+         players:[{id,name,score:0,answer:null,answeredAt:null,doubleDown:false,roundPoints:0,connected:true}],
+         usedQuestions:[],question:null,roundResults:[],version:1
+       };
+       candidate.on("connection",handleIncomingConnection);
+       candidate.on("error",err=>{
+         if(err.type!=="peer-unavailable")toast("Connection issue: "+err.type);
+       });
+       setStatus("HOSTING · "+code);
+       showScreen("lobby");render();startHostTicker();
+       toast("Room created. Share code "+code);
+     });
+     candidate.on("error",err=>{
+       if(success)return;
+       if(err.type==="unavailable-id"){
+         try{candidate.destroy();}catch(e){}
+         peer=null;
+         return;
+       }
+       connecting=false;$("createBtn").disabled=false;
+       toast("Could not create room: "+err.type+". Please try again.");
+       try{candidate.destroy();}catch(e){}
+       peer=null;
+     });
+     await new Promise(resolve=>setTimeout(resolve,1000));
+     if(!success&&peer===candidate&&candidate.destroyed){
+       peer=null;
+     }
+   }catch(error){
+     toast(error.message||"Could not create room.");
+   }
+ }
+ setTimeout(()=>{$("createBtn").disabled=false;connecting=false;},3000);
+}
+function handleIncomingConnection(conn){
+ if(!isHost||!room){conn.close();return;}
+ conn.on("open",()=>{
+   const existing=room.players.find(p=>p.id===conn.peer);
+   if(!existing&&room.players.length>=8){conn.send({type:"error",message:"Room is full."});conn.close();return;}
+   connections.set(conn.peer,conn);
+   if(!existing){
+     const name=String((conn.metadata&&conn.metadata.name)||"Player").slice(0,16);
+     room.players.push({id:conn.peer,name,score:0,answer:null,answeredAt:null,doubleDown:false,roundPoints:0,connected:true});
+   }else existing.connected=true;
+   conn.on("data",message=>handleClientMessage(conn,message));
+   conn.on("close",()=>{
+     connections.delete(conn.peer);
+     if(room){
+       const p=room.players.find(p=>p.id===conn.peer);
+       if(p)p.connected=false;
+       broadcastState();
+     }
+   });
+   conn.on("error",()=>{});
+   try{conn.send({type:"state",room});}catch(e){}
+   broadcastState();
+ });
+}
+function handleClientMessage(conn,message){
+ if(!room||!message||typeof message!=="object")return;
+ const player=room.players.find(p=>p.id===conn.peer);
+ if(!player)return;
+ if(message.type==="answer"&&room.phase==="question"&&player.answer===null){
+   const index=Number(message.index);
+   if(!Number.isInteger(index)||index<0||index>3)return;
+   player.answer=index;
+   player.answeredAt=now();
+   player.doubleDown=room.round===3&&!!message.doubleDown;
+   broadcastState();
+ }else if(message.type==="double"&&room.phase==="question"&&room.round===3&&player.answer===null){
+   player.doubleDown=!!message.value;
+   broadcastState();
+ }else if(message.type==="leave"){
+   player.connected=false;
+   try{conn.close();}catch(e){}
+   connections.delete(conn.peer);
+   broadcastState();
+ }
+}
+async function joinRoom(){
+ if(connecting)return;
+ connecting=true;$("joinBtn").disabled=true;
+ const code=$("joinCode").value.trim().toUpperCase();
+ const name=$("joinName").value.trim().slice(0,16)||"Player";
+ if(!/^[A-Z]{4}$/.test(code)){toast("Enter a valid four-letter room code.");connecting=false;$("joinBtn").disabled=false;return;}
+ try{
+   const candidate=makePeer();
+   peer=candidate;
+   candidate.on("open",()=>{
+     const conn=candidate.connect(hostPeerId(code),{
+       reliable:true,metadata:{name}
+     });
+     clientConn=conn;
+     const timeout=setTimeout(()=>{
+       if(connecting){connecting=false;$("joinBtn").disabled=false;toast("Host not found. Check the code and try again.");}
+     },12000);
+     conn.on("open",()=>{
+       clearTimeout(timeout);
+       connecting=false;isHost=false;me=candidate.id;
+       setStatus("CONNECTED · "+code);
+       toast("Connected to room "+code);
+     });
+     conn.on("data",message=>{
+       if(message.type==="error"){toast(message.message);leaveRoom();return;}
+       if(message.type==="state"&&message.room){
+         room=message.room;
+         if(!me)me=candidate.id;
+         answerLocal=(room.players.find(p=>p.id===me)||{}).answer;
+         doubleLocal=!!(room.players.find(p=>p.id===me)||{}).doubleDown;
+         render();
+       }
+     });
+     conn.on("close",()=>{
+       if(room){toast("Disconnected from host.");leaveRoom();}
+     });
+     conn.on("error",err=>toast("Connection error: "+err.type));
+   });
+   candidate.on("error",err=>{
+     if(err.type==="peer-unavailable")toast("Room not found. Check the code and try again.");
+     else toast("Peer connection error: "+err.type);
+     if(err.type==="peer-unavailable"){connecting=false;$("joinBtn").disabled=false;}
+   });
+ }catch(error){
+   toast(error.message||"Could not connect.");
+   connecting=false;
+   $("joinBtn").disabled=false;
+ }
+ setTimeout(()=>{$("joinBtn").disabled=false;},13000);
+}
+
+function startGame(){
+ if(!isHost||!room||room.players.filter(p=>p.connected).length<2)return;
+ room.players.forEach(p=>{p.score=0;p.answer=null;p.answeredAt=null;p.doubleDown=false;p.roundPoints=0;});
+ room.round=0;room.roundResults=[];room.usedQuestions=[];
+ startRound();
+}
+function startRound(){
+ if(!room||!isHost)return;
+ room.round++;
+ room.question=shuffleQuestion();
+ room.players.forEach(p=>{p.answer=null;p.answeredAt=null;p.doubleDown=false;p.roundPoints=0;});
+ room.phase="question";
+ room.roundStartedAt=now();
+ room.deadline=room.roundStartedAt+15000;
+ answerLocal=null;doubleLocal=false;
+ broadcastState();
+}
+function finishRound(){
+ if(!isHost||!room||room.phase!=="question")return;
+ const q=room.question;
+ room.players.forEach(p=>{
+   let points=0;
+   const elapsed=p.answeredAt?Math.max(0,p.answeredAt-room.roundStartedAt):15000;
+   const seconds=elapsed/1000;
+   if(p.answer===q.correct){
+     points=seconds<=3?1000:seconds<=6?800:seconds<=9?600:seconds<=12?400:200;
+     if(room.round===3&&p.doubleDown)points=Math.min(2000,points*2);
+   }else if(room.round===3&&p.doubleDown&&p.answer!==null){
+     points=-500;
+     p.score=Math.max(0,p.score-500);
+   }
+   p.score=Math.max(0,p.score+Math.max(0,points));
+   p.roundPoints=points;
+ });
+ room.roundResults.push({
+   round:room.round,
+   results:room.players.map(p=>({id:p.id,name:p.name,answer:p.answer,points:p.roundPoints,score:p.score,doubleDown:p.doubleDown}))
+ });
+ room.phase="reveal";room.deadline=now()+5000;
+ broadcastState();
+}
+function startHostTicker(){
+ if(hostTimer)clearInterval(hostTimer);
+ hostTimer=setInterval(()=>{
+   if(!isHost||!room)return;
+   if(room.phase==="question"){
+     const connected=room.players.filter(p=>p.connected);
+     const allAnswered=connected.length>0&&connected.every(p=>p.answer!==null);
+     if(allAnswered||now()>=room.deadline)finishRound();
+   }else if(room.phase==="reveal"&&now()>=room.deadline){
+     if(room.round>=3){room.phase="results";broadcastState();celebrate();}
+     else startRound();
+   }
+ },100);
+}
+function submitAnswer(index){
+ if(!room||room.phase!=="question"||answerLocal!==null)return;
+ const player=room.players.find(p=>p.id===me);
+ if(!player)return;
+ answerLocal=index;
+ if(isHost){
+   player.answer=index;player.answeredAt=now();player.doubleDown=room.round===3&&doubleLocal;
+   broadcastState();
+ }else sendToHost({type:"answer",index,doubleDown:doubleLocal});
+ if(navigator.vibrate)try{navigator.vibrate(25);}catch(e){}
+ render();
+}
+function toggleDouble(){
+ if(!room||room.phase!=="question"||room.round!==3||answerLocal!==null)return;
+ doubleLocal=!doubleLocal;
+ if(isHost){
+   const p=room.players.find(p=>p.id===me);if(p)p.doubleDown=doubleLocal;
+   broadcastState();
+ }else sendToHost({type:"double",value:doubleLocal});
+ render();
+}
+function leaderboard(){return room.players.slice().sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));}
+function render(){
+ if(!room)return;
+ const current=room.players.find(p=>p.id===me)||room.players[0];
+ $("roomCode").textContent=room.code;
+ $("playerCount").textContent=room.players.filter(p=>p.connected).length;
+ $("hostLabel").textContent=isHost?"You are the host":"Joined as player";
+ $("lobbyHint").textContent=room.players.filter(p=>p.connected).length<2?"Waiting for at least one more player…":isHost?"Everyone ready? Start when you like.":"Waiting for the host to start…";
+ $("startBtn").disabled=!isHost||room.players.filter(p=>p.connected).length<2||room.phase!=="lobby";
+ $("startBtn").textContent=room.players.filter(p=>p.connected).length<2?"Need 2 players to start":"Start game →";
+ $("lobbyPlayers").innerHTML=room.players.filter(p=>p.connected).map(p=>
+   `<div class="player"><div class="avatar">${escapeHtml(p.name.slice(0,1).toUpperCase())}</div><div><div class="name">${escapeHtml(p.name)}${p.id===room.hostId?" ✦":""}</div><small>${p.id===me?"You":p.id===room.hostId?"Host":"Player"}</small></div></div>`
+ ).join("");
+
+ if(room.phase==="lobby"){showScreen("lobby");return;}
+ if(room.phase==="question"||room.phase==="reveal"){
+   showScreen("game");
+   const q=room.question;if(!q)return;
+   $("roundLabel").textContent=`ROUND ${room.round} / 3${room.round===3?" · FINALE":""}`;
+   $("categoryLabel").textContent=q.category;
+   $("myScore").textContent=(current?current.score:0).toLocaleString();
+   const answered=room.players.filter(p=>p.connected&&p.answer!==null).length;
+   const total=room.players.filter(p=>p.connected).length;
+   $("answeredCount").textContent=`${answered}/${total}`;
+   $("playerProgress").textContent=room.phase==="reveal"?"Round complete":`${Math.max(0,total-answered)} player${total-answered===1?"":"s"} still choosing`;
+   const remaining=room.phase==="question"?Math.max(0,room.deadline-now()):0;
+   $("timerFill").style.width=(remaining/15000*100)+"%";
+   $("timerTrack").classList.toggle("urgent",room.phase==="question"&&remaining<=5000);
+   $("timerNum").textContent=room.phase==="question"?(remaining/1000).toFixed(1)+"s":"";
+   $("questionCard").classList.toggle("hidden",room.phase==="reveal");
+   $("doubleDownBox").classList.toggle("hidden",room.round!==3||room.phase!=="question");
+   $("doubleToggle").disabled=room.phase!=="question"||answerLocal!==null;
+   $("doubleToggle").classList.toggle("on",!!(current&&current.doubleDown));
+   $("doubleToggle").setAttribute("aria-checked",String(!!(current&&current.doubleDown)));
+   $("doubleCopy").textContent=current&&current.doubleDown?"ON: correct = double points; wrong = −500.":"Risk it for double points — or lose 500.";
+   $("answers").innerHTML=q.options.map((option,index)=>{
+     let cls="answer";
+     if(answerLocal===index)cls+=" selected";
+     if(room.phase==="reveal"&&index===q.correct)cls+=" correct";
+     if(room.phase==="reveal"&&answerLocal===index&&index!==q.correct)cls+=" wrong";
+     return `<button class="${cls}" data-answer="${index}" ${room.phase!=="question"||answerLocal!==null?"disabled":""}><span class="letter">${"ABCD"[index]}</span><span>${escapeHtml(option)}</span></button>`;
+   }).join("");
+   $("answers").querySelectorAll("[data-answer]").forEach(button=>button.addEventListener("click",()=>submitAnswer(Number(button.dataset.answer))));
+   const feedback=$("answerFeedback");
+   if(answerLocal!==null&&room.phase==="question"){
+     feedback.classList.remove("hidden","good","bad");
+     feedback.classList.add(answerLocal===q.correct?"good":"bad");
+     feedback.textContent="✓ Answer locked in. Wait for the reveal.";
+   }else feedback.classList.add("hidden");
+   $("revealCard").classList.toggle("hidden",room.phase!=="reveal");
+   if(room.phase==="reveal"){
+     $("revealTitle").textContent=q.options[q.correct];
+     $("revealExplanation").textContent=q.explanation;
+     const result=room.roundResults[room.roundResults.length-1];
+     const personal=result&&result.results.find(p=>p.id===me);
+     $("roundScoreSummary").innerHTML=personal
+       ?`<strong>${personal.points>0?"+":""}${personal.points.toLocaleString()} points this round</strong> · Total: <strong>${(current?current.score:0).toLocaleString()}</strong>${personal.doubleDown?" · Double Down activated":""}`
+       :"Round scores updated";
+     $("nextRoundHint").textContent=room.round>=3?"Final podium coming up…":"Next round begins shortly…";
+   }
+   return;
+ }
+ if(room.phase==="results"){
+   showScreen("results");
+   const sorted=leaderboard(),top=sorted.slice(0,3);
+   $("podium").innerHTML=[top[0],top[1],top[2]].map((p,index)=>{
+     if(!p)return `<div class="podium-col"><div class="podium-person">—</div><div class="podium-block p${index+1}">${index+1}</div></div>`;
+     const place=index+1;
+     return `<div class="podium-col"><div class="podium-person">${escapeHtml(p.name)}</div><div class="podium-score">${p.score.toLocaleString()} pts</div><div class="podium-block p${place}">${place===1?"👑":place===2?"🥈":"🥉"}<small style="font-size:12px">${place===1?"1ST PLACE":place===2?"2ND PLACE":"3RD PLACE"}</small></div></div>`;
+   }).join("");
+   $("finalLeaderboard").innerHTML=sorted.map((p,index)=>
+     `<div class="leader"><div class="rank">${index+1}</div><div><strong>${escapeHtml(p.name)}</strong><div class="muted" style="font-size:12px">${index===0?"Party champion":"Final score"}</div></div><div class="score">${p.score.toLocaleString()} pts</div></div>`
+   ).join("");
+   $("resultRoom").textContent=`Room ${room.code} · ${room.players.filter(p=>p.connected).length} connected players`;
+   celebrate();
+ }
+}
+function celebrate(){
+ if(!$("results").classList.contains("active")||$("confetti").children.length>5)return;
+ const colors=["#fbbf24","#22d3ee","#f472b6","#a78bfa","#34d399"];
+ for(let i=0;i<80;i++){
+   const piece=document.createElement("i");
+   piece.style.left=Math.random()*100+"%";
+   piece.style.background=colors[Math.floor(Math.random()*colors.length)];
+   piece.style.animationDelay=Math.random()+"s";
+   $("confetti").appendChild(piece);
+ }
+ setTimeout(()=>$("confetti").replaceChildren(),4500);
+}
+
+$("createBtn").addEventListener("click",createRoom);
+$("joinBtn").addEventListener("click",joinRoom);
+$("joinCode").addEventListener("input",e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,"").slice(0,4));
+$("startBtn").addEventListener("click",startGame);
+$("leaveBtn").addEventListener("click",leaveRoom);
+$("homeBtn").addEventListener("click",leaveRoom);
+$("doubleToggle").addEventListener("click",toggleDouble);
+$("playAgainBtn").addEventListener("click",()=>{
+ if(!isHost){toast("Only the host can restart the game.");return;}
+ room.phase="lobby";room.round=0;room.roundResults=[];room.question=null;
+ room.players.forEach(p=>{p.score=0;p.answer=null;p.answeredAt=null;p.doubleDown=false;p.roundPoints=0;});
+ broadcastState();showScreen("lobby");$("confetti").replaceChildren();
+});
+uiTimer=setInterval(()=>{
+ if(!room||room.phase!=="question")return;
+ const remaining=Math.max(0,room.deadline-now());
+ $("timerFill").style.width=(remaining/15000*100)+"%";
+ $("timerTrack").classList.toggle("urgent",remaining<=5000);
+ $("timerNum").textContent=(remaining/1000).toFixed(1)+"s";
+},80);
+
+window.addEventListener("beforeunload",()=>{
+ if(clientConn&&clientConn.open){try{clientConn.send({type:"leave"});}catch(e){}}
+ if(peer)try{peer.destroy();}catch(e){}
+});
+</script>
+</body>
+</html>
